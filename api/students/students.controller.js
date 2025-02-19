@@ -3,30 +3,62 @@ const Teacher = require('../teacher/teacher.model');
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 // Register a new student
+// exports.register = async (req, res) => {
+//   try {
+//     const { rollNumber, name, email, password ,batch } = req.body;
+
+//     // Validate input
+//     if (!rollNumber || !name || !email || !password || !batch) {
+//       return res.status(400).json({ error: "All fields are required" });
+//     }
+
+//     // Check if email or rollNumber is already registered
+//     const existingStudent = await Student.findOne({ $or: [{ email }, { rollNumber }] });
+//     if (existingStudent) {
+//       return res.status(400).json({ error: "Email or Roll Number already registered" });
+//     }
+
+//     // Create a new student
+//     const newStudent = new Student({ rollNumber, name, email, password, batch });
+//     await newStudent.save();
+
+//     res.status(201).json({ message: "Student registered successfully" });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
 exports.register = async (req, res) => {
   try {
-    const { rollNumber, name, email, password ,batch } = req.body;
+    const { name, email, password, batch } = req.body;
+    console.log( name , email, password, batch  );
 
-    // Validate input
-    if (!rollNumber || !name || !email || !password || !batch) {
+    // Validate input (excluding rollNumber, since it's generated automatically)
+    if (!name || !email || !password || !batch) {
+
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Check if email or rollNumber is already registered
-    const existingStudent = await Student.findOne({ $or: [{ email }, { rollNumber }] });
+    // Check if email is already registered
+    const existingStudent = await Student.findOne({ email });
     if (existingStudent) {
-      return res.status(400).json({ error: "Email or Roll Number already registered" });
+      return res.status(400).json({ error: "Email is already registered" });
     }
 
-    // Create a new student
-    const newStudent = new Student({ rollNumber, name, email, password, batch });
+    // Find the highest roll number and increment it
+    const lastStudent = await Student.findOne().sort({ rollNumber: -1 }); // Get the student with the highest roll number
+    let newRollNumber = lastStudent ? parseInt(lastStudent.rollNumber, 10) + 1 : 1; // If no students, start from 1
+
+    // Create a new student with the generated roll number
+    const newStudent = new Student({ rollNumber: newRollNumber, name, email, password, batch });
     await newStudent.save();
 
-    res.status(201).json({ message: "Student registered successfully" });
+    res.status(201).json({ message: "Student registered successfully", rollNumber: newRollNumber });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Student login
 exports.login = async (req, res) => {

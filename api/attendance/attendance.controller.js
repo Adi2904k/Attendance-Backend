@@ -128,3 +128,69 @@ exports.getPresentStudents = async (req, res) => {
     return res.status(500).json({ message: "Server Error" });
   }
 };
+
+
+
+exports.getAttendanceReport = async (req, res) => {
+  try {
+    console.log("Received Query Params:", req.query);
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "Missing startDate or endDate!" });
+    }
+
+    // Convert startDate and endDate to Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Include the entire endDate
+
+    // Fetch attendance records within the date range
+    const attendanceRecords = await Attendance.find({
+      date: { $gte: start, $lte: end }
+    }).populate("presentStudents", "rollNumber name");
+
+    if (!attendanceRecords || attendanceRecords.length === 0) {
+      return res.status(404).json({ message: "No attendance records found for this date range!" });
+    }
+
+    console.log("Attendance Records from DB:", attendanceRecords);
+
+    // Map to store attendance count for each student
+    const studentAttendanceMap = new Map();
+
+    attendanceRecords.forEach(record => {
+      record.presentStudents.forEach(student => {
+        const studentId = student._id.toString();
+        if (!studentAttendanceMap.has(studentId)) {
+          studentAttendanceMap.set(studentId, {
+            name: student.name,
+            rollNumber: student.rollNumber,
+            presentDays: 0,
+          });
+        }
+        studentAttendanceMap.get(studentId).presentDays++;
+      });
+    });
+
+    // Calculate total days in the given date range
+    const totalDays = attendanceRecords.length;
+
+    // Generate the attendance report
+    const attendanceReport = Array.from(studentAttendanceMap.values()).map(student => ({
+      name: student.name,
+      rollNumber: student.rollNumber,
+      attendancePercentage: ((student.presentDays / totalDays) * 100).toFixed(2),
+    }));
+
+    return res.status(200).json({
+      startDate,
+      endDate,
+      totalDays,
+      students: attendanceReport,
+    });
+  } catch (err) {
+    console.error("Error fetching attendance report:", err);
+    return res.status(500).json({ message: "Server Error" });
+  }
+};

@@ -8,4 +8,5 @@ const attendanceController = require("./attendance.controller.js");
 // Add a new attendance record
 router.post("/mark", attendanceController.markAttendance);
 router.get("/getAttendance", attendanceController.getPresentStudents);
+router.get("/report", attendanceController.getAttendanceReport)
 module.exports = router;
